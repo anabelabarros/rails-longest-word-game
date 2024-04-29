@@ -1,15 +1,30 @@
+require "open-uri"
+
 class GamesController < ApplicationController
+  VOWELS = %w(A E I O U Y)
+
   def new
-    @letters = ('A'..'Z').to_a.sample(10)
+    @letters = Array.new(5) { VOWELS.sample }
+    @letters += Array.new(5) { (('A'..'Z').to_a - VOWELS).sample }
+    @letters.shuffle!
   end
 
   def score
-    word = params[:word]
-    letters = params[:letters].split('')
-    if !word.chars.all? {|char| letters.include?(char) }
-      @result = "Sorry,'#{word}'cannot be build from the original grid."
-    else
-      score = calculate_score(word)
-      @result = "Congratulations! '#{word}' is a valid word and your score is #{score}."
-    end
+    @letters = params[:letters]
+    @word = (params[:word] || "").upcase
+    @included = included?(@word, @letters)
+    @english_word = english_word?(@word)
   end
+
+  private
+
+  def included?(word, letters)
+    word.chars.all? { |letter| word.count(letter) <= letters.count(letter) }
+  end
+
+  def english_word?(word)
+    response = URI.open("https://wagon-dictionary.herokuapp.com/#{word}")
+    json = JSON.parse(response.read)
+    json['found']
+  end
+end
